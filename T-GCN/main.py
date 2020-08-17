@@ -38,15 +38,15 @@ lr = FLAGS.learning_rate
 training_epoch = FLAGS.training_epoch
 gru_units = FLAGS.gru_units
 
-###### load data ######
-# if data_name == 'sz':
-#     data, adj = load_sz_data('sz')
-# if data_name == 'los':
-#     data, adj = load_los_data('los')
+##### load data ######
+if data_name == 'sz':
+    data, adj = load_sz_data('sz')
+if data_name == 'los':
+    data, adj = load_los_data('los')
 
-data, adj = load_dow_price_data()
-
+# data, adj = load_dow_price_data()
 # data, adj, label = load_dow_full_data()
+
 time_len = data.shape[0]
 num_nodes = data.shape[1]
 # num_features = data.shape[2]
@@ -71,7 +71,7 @@ max_value = np.max(data1)
 # min_rmse:4218.586651805764 min_mae:2829.233 max_acc:0.4141682982444763 r2:-0.06428861618041992 var:-0.0431898832321167
 # min_rmse:4273.191624041597 min_mae:2862.866 max_acc:0.4065856337547302 r2:-0.09201860427856445 var:-0.0651127099990844
 # min_rmse:4215.928421487219 min_mae:2828.4226 max_acc:0.4145374894142151 r2:-0.06294786930084229 var:-0.03952479362487793
-#  data1 = data1/max_value
+data1 = data1/max_value
 # min_rmse:26.51728604225631 min_mae:18.180794 max_acc:0.4408230781555176 r2:0.030353426933288574 var:0.03035348653793335
 
 # normal process data
