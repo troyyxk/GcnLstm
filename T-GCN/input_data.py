@@ -45,11 +45,11 @@ def load_dow_full_data():
     for f in dow_files_names:
         print("Read file: ", f)
         # limit length
-        dow_data.append(pd.read_csv(dow_files_addr + f).values)
+        dow_data.append(pd.read_csv(dow_files_addr + f).values[1000: 7000])
     dow_data = np.array(dow_data).transpose((1, 0, 2))
     # time * gcn node * features
 
-    label = pd.read_csv(r'../Data_stock/dow_price.csv').values
+    label = pd.read_csv(r'../Data_stock/dow_price.csv').values[1000: 7000]
     return dow_data, adj, label
 
 

@@ -52,9 +52,10 @@ num_nodes = data.shape[1]
 # num_features = data.shape[2]
 print("--------------data info--------------------")
 print("time_len: ", time_len)
-print("num_nodes: ", num_nodes)
+# print("num_nodes: ", num_nodes)
 
-data1 = np.mat(data, dtype=np.float32)
+data1 = np.array(data, dtype=np.float32)
+
 
 # print("--------------np.count_nonzero(data1)--------------------------")
 # print(np.count_nonzero(data1))
@@ -74,11 +75,11 @@ max_value = np.max(data1)
 # min_rmse:26.51728604225631 min_mae:18.180794 max_acc:0.4408230781555176 r2:0.030353426933288574 var:0.03035348653793335
 
 # normal process data
-# trainX, trainY, testX, testY = preprocess_data(
-#     data1, time_len, train_rate, seq_len, pre_len)
-
 trainX, trainY, testX, testY = preprocess_data(
     data1, time_len, train_rate, seq_len, pre_len)
+
+# trainX, trainY, testX, testY = process_dow_full_data(
+#     data1, label, time_len, train_rate, seq_len, pre_len)
 
 totalbatch = int(trainX.shape[0]/batch_size)
 training_data_count = len(trainX)

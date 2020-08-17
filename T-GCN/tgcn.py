@@ -31,26 +31,26 @@ class tgcnCell(RNNCell):
         return self._units
 
     def __call__(self, inputs, state, scope=None):
-        #-- print("-----------------inputs, state------------------------")
-        #-- print(inputs)
-        #-- print(state)
+        print("-----------------inputs, state------------------------")
+        print(inputs)
+        print(state)
         with tf.variable_scope(scope or "tgcn"):
             with tf.variable_scope("gates"):
-                #-- print("(((((((((((((((((gates)))))))))))")
+                print("(((((((((((((((((gates)))))))))))")
                 value = tf.nn.sigmoid(
                     self._gc(inputs, state, 2 * self._units, bias=1.0, scope=scope))
                 r, u = tf.split(value=value, num_or_size_splits=2, axis=1)
             with tf.variable_scope("candidate"):
-                #-- print("(((((((((((((((((candidate)))))))))))")
+                print("(((((((((((((((((candidate)))))))))))")
                 r_state = r * state
-                #-- print(r_state)
-                #-- print("------------r_state-----------------")
-                #-- print("r: ", r.get_shape())
-                #-- print("u: ", u.get_shape())
-                #-- print("state: ", state.get_shape())
-                #-- print("r_state: ", r_state.get_shape())
-                #-- print("-------------------------------")
-                #-- print("\n")
+                print(r_state)
+                print("------------r_state-----------------")
+                print("r: ", r.get_shape())
+                print("u: ", u.get_shape())
+                print("state: ", state.get_shape())
+                print("r_state: ", r_state.get_shape())
+                print("-------------------------------")
+                print("\n")
                 c = self._act(self._gc(inputs, r_state,
                                        self._units, scope=scope))
             new_h = u * state + (1 - u) * c
@@ -68,20 +68,20 @@ class tgcnCell(RNNCell):
         x0 = tf.transpose(x_s, perm=[1, 2, 0])
         tmp = x0
         x0 = tf.reshape(x0, shape=[self._nodes, -1])
-        #-- print("------------x_s input_size-----------------")
+        print("------------x_s input_size-----------------")
         # -- print("x_s: ", x_s.get_shape())  # ?*207*65
         # -- print("tmp: ", tmp.get_shape())  # 207*65*?
         # -- print("x0: ", x0.get_shape())  # 207*?
-        #-- print("input_size: ", input_size)
-        #-- print("-------------------------------")
-        #-- print("\n")
+        print("input_size: ", input_size)
+        print("-------------------------------")
+        print("\n")
 
         scope = tf.get_variable_scope()
         with tf.variable_scope(scope):
             #             for m in self._adj:
             #                 # a = m
             #                 x1 = tf.sparse_tensor_dense_matmul(m, x0)
-            # #                #-- print(x1)
+            # #                print(x1)
 
             x1 = tf.sparse_tensor_dense_matmul(self._adj[0], x0)
 
@@ -93,18 +93,18 @@ class tgcnCell(RNNCell):
 
             x = tf.reshape(x1, shape=[self._nodes, input_size, -1])
 
-            #-- print("------------shape------------")
-            #-- print("x: ", x.get_shape())
-            #-- print("x0: ", x0.get_shape())
-            #-- print("x1: ", x1.get_shape())
-            #-- print(np.array(self._adj).shape)
-            # #-- print(a.shape)
-            #-- print("-----------------------------")
+            print("------------shape------------")
+            print("x: ", x.get_shape())
+            print("x0: ", x0.get_shape())
+            print("x1: ", x1.get_shape())
+            print(np.array(self._adj).shape)
+            # print(a.shape)
+            print("-----------------------------")
 
             x = tf.transpose(x, perm=[2, 0, 1])
             tmp2 = x
             x = tf.reshape(x, shape=[-1, input_size])
-            # #-- print()
+            # print()
 
             weights = tf.get_variable(
                 'weights', [input_size, output_size], initializer=tf.contrib.layers.xavier_initializer())
