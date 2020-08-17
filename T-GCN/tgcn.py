@@ -18,7 +18,7 @@ class tgcnCell(RNNCell):
         super(tgcnCell, self).__init__(_reuse=reuse)
         self._act = act
         self._nodes = num_nodes
-        self._units = num_units
+        self._units = num_units  # 64
         self._adj = []
         self._adj.append(calculate_laplacian(adj))
 
@@ -40,19 +40,25 @@ class tgcnCell(RNNCell):
                 value = tf.nn.sigmoid(
                     self._gc(inputs, state, 2 * self._units, bias=1.0, scope=scope))
                 r, u = tf.split(value=value, num_or_size_splits=2, axis=1)
+
+                # r = tf.nn.sigmoid(
+                #     self._gc(inputs, state, self._units, bias=1.0, scope=scope))
+                # u = tf.nn.sigmoid(
+                #     self._gc(inputs, state, self._units, bias=1.0, scope=scope))
             with tf.variable_scope("candidate"):
                 print("(((((((((((((((((candidate)))))))))))")
                 r_state = r * state
+                c = self._act(self._gc(inputs, r_state,
+                                       self._units, scope=scope))
                 print(r_state)
                 print("------------r_state-----------------")
                 print("r: ", r.get_shape())
                 print("u: ", u.get_shape())
+                print("c: ", c.get_shape())
                 print("state: ", state.get_shape())
                 print("r_state: ", r_state.get_shape())
                 print("-------------------------------")
                 print("\n")
-                c = self._act(self._gc(inputs, r_state,
-                                       self._units, scope=scope))
             new_h = u * state + (1 - u) * c
         return new_h, new_h
 
@@ -69,9 +75,9 @@ class tgcnCell(RNNCell):
         tmp = x0
         x0 = tf.reshape(x0, shape=[self._nodes, -1])
         print("------------x_s input_size-----------------")
-        # -- print("x_s: ", x_s.get_shape())  # ?*207*65
-        # -- print("tmp: ", tmp.get_shape())  # 207*65*?
-        # -- print("x0: ", x0.get_shape())  # 207*?
+        print("x_s: ", x_s.get_shape())  # ?*207*65
+        print("tmp: ", tmp.get_shape())  # 207*65*?
+        print("x0: ", x0.get_shape())  # 207*?
         print("input_size: ", input_size)
         print("-------------------------------")
         print("\n")
