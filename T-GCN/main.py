@@ -20,7 +20,7 @@ time_start = time.time()
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float('learning_rate', 0.001, 'Initial learning rate.')
-flags.DEFINE_integer('training_epoch', 10, 'Number of epochs to train.')
+flags.DEFINE_integer('training_epoch', 1, 'Number of epochs to train.')
 flags.DEFINE_integer('gru_units', 64, 'hidden units of gru.')
 flags.DEFINE_integer('seq_len', 12, '  time length of inputs.')
 flags.DEFINE_integer('pre_len', 3, 'time length of prediction.')
@@ -46,13 +46,18 @@ gru_units = FLAGS.gru_units
 
 data, adj = load_dow_price_data()
 
-
+# data, adj, label = load_dow_full_data()
 time_len = data.shape[0]
 num_nodes = data.shape[1]
+# num_features = data.shape[2]
+print("--------------data info--------------------")
+print("time_len: ", time_len)
+print("num_nodes: ", num_nodes)
+
 data1 = np.mat(data, dtype=np.float32)
 
-print("--------------np.count_nonzero(data1)--------------------------")
-print(np.count_nonzero(data1))
+# print("--------------np.count_nonzero(data1)--------------------------")
+# print(np.count_nonzero(data1))
 
 # normalize
 # data1 = np.mat(data, dtype=np.float32)/num_nodes
@@ -60,7 +65,18 @@ print(np.count_nonzero(data1))
 
 # normalization
 max_value = np.max(data1)
-data1 = data1/max_value
+# test result for before and after the normalization, do not normalize is better
+# test with 1000:7000, price only
+# min_rmse:4218.586651805764 min_mae:2829.233 max_acc:0.4141682982444763 r2:-0.06428861618041992 var:-0.0431898832321167
+# min_rmse:4273.191624041597 min_mae:2862.866 max_acc:0.4065856337547302 r2:-0.09201860427856445 var:-0.0651127099990844
+# min_rmse:4215.928421487219 min_mae:2828.4226 max_acc:0.4145374894142151 r2:-0.06294786930084229 var:-0.03952479362487793
+#  data1 = data1/max_value
+# min_rmse:26.51728604225631 min_mae:18.180794 max_acc:0.4408230781555176 r2:0.030353426933288574 var:0.03035348653793335
+
+# normal process data
+# trainX, trainY, testX, testY = preprocess_data(
+#     data1, time_len, train_rate, seq_len, pre_len)
+
 trainX, trainY, testX, testY = preprocess_data(
     data1, time_len, train_rate, seq_len, pre_len)
 
@@ -75,19 +91,28 @@ def TGCN(_X, _weights, _biases):
     _X = tf.unstack(_X, axis=1)
     outputs, states = tf.nn.static_rnn(cell, _X, dtype=tf.float32)
     m = []
+    print("---------------len(outputs)----------------")
+    print(len(outputs))
+    print(type(outputs[0]))
+    print(outputs[0])
     for i in outputs:
         o = tf.reshape(i, shape=[-1, num_nodes, gru_units])
+        # comment the line below makes no difference
         o = tf.reshape(o, shape=[-1, gru_units])
         m.append(o)
     last_output = m[-1]
+    # outputs = gru_units * number of nodes in gcn
     output = tf.matmul(last_output, _weights['out']) + _biases['out']
+    # num_nodes * pre_len, 3 in this case
     output = tf.reshape(output, shape=[-1, num_nodes, pre_len])
     output = tf.transpose(output, perm=[0, 2, 1])
     output = tf.reshape(output, shape=[-1, num_nodes])
+    # pre_len * num_nodes
     return output, m, states
 
 
 ###### placeholders ######
+# TODO, check if the input need to be reshape to add features
 inputs = tf.placeholder(tf.float32, shape=[None, seq_len, num_nodes])
 labels = tf.placeholder(tf.float32, shape=[None, pre_len, num_nodes])
 
@@ -100,18 +125,15 @@ biases = {
 if model_name == 'tgcn':
     pred, ttts, ttto = TGCN(inputs, weights, biases)
 
-y_pred = pred
-
-
 ###### optimizer ######
 lambda_loss = 0.0015
 Lreg = lambda_loss * sum(tf.nn.l2_loss(tf_var)
                          for tf_var in tf.trainable_variables())
 label = tf.reshape(labels, [-1, num_nodes])
 # loss
-loss = tf.reduce_mean(tf.nn.l2_loss(y_pred-label) + Lreg)
+loss = tf.reduce_mean(tf.nn.l2_loss(pred-label) + Lreg)
 # rmse
-error = tf.sqrt(tf.reduce_mean(tf.square(y_pred-label)))
+error = tf.sqrt(tf.reduce_mean(tf.square(pred-label)))
 optimizer = tf.train.AdamOptimizer(lr).minimize(loss)
 
 ###### Initialize session ######
@@ -153,7 +175,7 @@ for epoch in range(training_epoch):
         print("m/totalbatch: ", m, "/", totalbatch)
         mini_batch = trainX[m * batch_size: (m+1) * batch_size]
         mini_label = trainY[m * batch_size: (m+1) * batch_size]
-        _, loss1, rmse1, train_output = sess.run([optimizer, loss, error, y_pred],
+        _, loss1, rmse1, train_output = sess.run([optimizer, loss, error, pred],
                                                  feed_dict={inputs: mini_batch, labels: mini_label})
         # print("mini_batch.shape: ", mini_batch.shape)
         # print("mini_label.shape: ", mini_label.shape)
@@ -163,7 +185,7 @@ for epoch in range(training_epoch):
 
     print("-1-")
     # Test completely at every epoch
-    loss2, rmse2, test_output = sess.run([loss, error, y_pred],
+    loss2, rmse2, test_output = sess.run([loss, error, pred],
                                          feed_dict={inputs: testX, labels: testY})
     print("-2-")
     test_label = np.reshape(testY, [-1, num_nodes])
