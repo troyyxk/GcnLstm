@@ -125,8 +125,12 @@ class tgcnCell(RNNCell):
             # print(a.shape)
             print("-----------------------------")
 
-            x = tf.transpose(x, perm=[3, 0, 1, 2])
-            # ?, gcn, features, gru
+            x = tf.transpose(x, perm=[3, 1, 0, 2])
+            # ?, features, gcn, gru
+            print("-------------before weight----------------------")
+            print("x: ", x)
+            print("x.shape: ", x.shape)
+            print("x.get_shape(): ", x.get_shape())
             tmp2 = x
             x = tf.reshape(x, shape=[-1, input_size])
             # print()
@@ -142,7 +146,6 @@ class tgcnCell(RNNCell):
             print("x: ", x)
             print("x.shape: ", x.shape)
             print("x.get_shape(): ", x.get_shape())
-            x = tf.transpose(x, perm=[0, 2, 1, 3])
             # ?, features, gcn, gru
             x = tf.reshape(
                 x, shape=[-1, self._features, self._nodes, output_size])
