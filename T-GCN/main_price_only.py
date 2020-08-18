@@ -44,16 +44,16 @@ gru_units = FLAGS.gru_units
 # if data_name == 'los':
 #     data, adj = load_los_data('los')
 
-# data, adj = load_dow_price_data()
-data, adj, label = load_dow_full_data()
+data, adj = load_dow_price_data()
+# data, adj, label = load_dow_full_data()
 
 time_len = data.shape[0]
 num_nodes = data.shape[1]
-num_features = data.shape[2]
+# num_features = data.shape[2]
 print("--------------data info--------------------")
 print("time_len: ", time_len)
 print("num_nodes: ", num_nodes)
-print("num_features: ", num_features)
+# print("num_features: ", num_features)
 
 data1 = np.array(data, dtype=np.float32)
 
@@ -76,11 +76,11 @@ data1 = data1/max_value
 # min_rmse:26.51728604225631 min_mae:18.180794 max_acc:0.4408230781555176 r2:0.030353426933288574 var:0.03035348653793335
 
 # normal process data
-# trainX, trainY, testX, testY = preprocess_data(
-#     data1, time_len, train_rate, seq_len, pre_len)
+trainX, trainY, testX, testY = preprocess_data(
+    data1, time_len, train_rate, seq_len, pre_len)
 
-trainX, trainY, testX, testY = process_dow_full_data(
-    data1, label, time_len, train_rate, seq_len, pre_len)
+# trainX, trainY, testX, testY = process_dow_full_data(
+#     data1, label, time_len, train_rate, seq_len, pre_len)
 
 totalbatch = int(trainX.shape[0]/batch_size)
 training_data_count = len(trainX)
@@ -88,8 +88,7 @@ training_data_count = len(trainX)
 
 def TGCN(_X, _weights, _biases):
     ###
-    cell_1 = tgcnCell(gru_units, adj, num_nodes=num_nodes,
-                      num_features=num_features)
+    cell_1 = tgcnCell(gru_units, adj, num_nodes=num_nodes)
     cell = tf.nn.rnn_cell.MultiRNNCell([cell_1], state_is_tuple=True)
     print("------------TCGN--------------")
     print("_X.shape: ", _X.shape)
@@ -98,7 +97,7 @@ def TGCN(_X, _weights, _biases):
     print("_X[0].shape: ", _X[0].shape)
     outputs, states = tf.nn.static_rnn(cell, _X, dtype=tf.float32)
     m = []
-    print("---------------before len(outputs)----------------")
+    print("---------------len(outputs)----------------")
     print(len(outputs))
     print(type(outputs[0]))
     print(outputs[0])
@@ -120,11 +119,11 @@ def TGCN(_X, _weights, _biases):
 
 ###### placeholders ######
 # TODO, check if the input need to be reshape to add features
-# inputs = tf.placeholder(
-#     tf.float32, shape=[None, seq_len, num_nodes])
-
 inputs = tf.placeholder(
-    tf.float32, shape=[None, seq_len, num_nodes, num_features])
+    tf.float32, shape=[None, seq_len, num_nodes])
+
+# inputs = tf.placeholder(
+#     tf.float32, shape=[None, seq_len, num_nodes, num_features])
 labels = tf.placeholder(tf.float32, shape=[None, pre_len, num_nodes])
 
 # Graph weights
@@ -186,8 +185,6 @@ for epoch in range(training_epoch):
         print("m/totalbatch: ", m, "/", totalbatch)
         mini_batch = trainX[m * batch_size: (m+1) * batch_size]
         mini_label = trainY[m * batch_size: (m+1) * batch_size]
-        # print("mini_batch.shape: ", mini_batch.shape)
-        # print("mini_label.shape: ", mini_label.shape)
         _, loss1, rmse1, train_output = sess.run([optimizer, loss, error, pred],
                                                  feed_dict={inputs: mini_batch, labels: mini_label})
         # print("train_output.shape: ", train_output.shape)

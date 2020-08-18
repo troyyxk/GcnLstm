@@ -88,8 +88,7 @@ training_data_count = len(trainX)
 
 def TGCN(_X, _weights, _biases):
     ###
-    cell_1 = tgcnCell(gru_units, adj, num_nodes=num_nodes,
-                      num_features=num_features)
+    cell_1 = tgcnCell(gru_units, adj, num_nodes=num_nodes)
     cell = tf.nn.rnn_cell.MultiRNNCell([cell_1], state_is_tuple=True)
     print("------------TCGN--------------")
     print("_X.shape: ", _X.shape)
@@ -98,7 +97,7 @@ def TGCN(_X, _weights, _biases):
     print("_X[0].shape: ", _X[0].shape)
     outputs, states = tf.nn.static_rnn(cell, _X, dtype=tf.float32)
     m = []
-    print("---------------before len(outputs)----------------")
+    print("---------------len(outputs)----------------")
     print(len(outputs))
     print(type(outputs[0]))
     print(outputs[0])

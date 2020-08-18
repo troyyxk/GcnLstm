@@ -12,14 +12,13 @@ class tgcnCell(RNNCell):
     def call(self, inputs, **kwargs):
         pass
 
-    def __init__(self, num_units, adj, num_nodes, num_features, input_size=None,
+    def __init__(self, num_units, adj, num_nodes, input_size=None,
                  act=tf.nn.tanh, reuse=None):
 
         super(tgcnCell, self).__init__(_reuse=reuse)
         self._act = act
         self._nodes = num_nodes  # GCN
         self._units = num_units  # GRU, 64
-        self._features = num_features  # 71
         self._adj = []
         self._adj.append(calculate_laplacian(adj))
 
@@ -66,27 +65,26 @@ class tgcnCell(RNNCell):
 
     def _gc(self, inputs, state, output_size, bias=0.0, scope=None):
         # inputs:(-1,num_nodes)
-        inputs = tf.transpose(inputs, perm=[0, 2, 1])
+        # inputs = tf.transpose(inputs, perm=[0, 2, 1])
         print("------------test expand_dims---------------")
         print("input before: ", inputs)
-        inputs = tf.expand_dims(inputs, 3)
+        # inputs = tf.expand_dims(inputs, 2)
         print("input after: ", inputs)
         # state:(batch,num_node,gru_units)
         print("-----------test state reshape-----------")
         print("state before: ", state)
-        state = tf.reshape(
-            state, (-1, self._features, self._nodes, self._units))
-        # state = tf.reshape(
-        #     state, (-1, self._nodes, self._units, self._features))
+        state = tf.reshape(state, (-1, self._nodes, self._units))
         print("state after: ", state)
         # concat
         # TODO, original
         # x_s = tf.concat([inputs, state], axis=2)
-        x_s = tf.concat([state, inputs], axis=3)
+        x_s = tf.concat([state, inputs], axis=2)
 
-        input_size = x_s.get_shape()[3].value
-        x0 = tf.transpose(x_s, perm=[2, 1, 3, 0])
-        # gcn, features, gru, ?
+        gru_state_size = state.get_shape()[2].value
+        new_input_size = gru_state_size + 1
+        input_size = x_s.get_shape()[2].value
+        # (num_node,input_size,-1)
+        x0 = tf.transpose(x_s, perm=[1, 2, 0])
         tmp = x0
         x0 = tf.reshape(x0, shape=[self._nodes, -1])
         print("------------x_s input_size-----------------")
@@ -94,6 +92,7 @@ class tgcnCell(RNNCell):
         print("tmp: ", tmp.get_shape())  # 207*65*?
         print("x0: ", x0.get_shape())  # 207*?
         print("input_size: ", input_size)  # 65
+        print("gru_state_size: ", gru_state_size)  # 65
         print("-------------------------------")
         print("\n")
 
@@ -112,10 +111,9 @@ class tgcnCell(RNNCell):
             #     a = m
             # x1 = tf.sparse_tensor_dense_matmul(a, x0)
 
-            x = tf.reshape(
-                x1, shape=[self._nodes, self._features, input_size, -1])
+            x = tf.reshape(x1, shape=[self._nodes, input_size, -1])
             print("x: ", x.get_shape())
-            # x = x[:, 0:input_size, :]
+            x = x[:, 0:new_input_size, :]
 
             print("------------shape------------")
             print("x: ", x.get_shape())
@@ -125,27 +123,18 @@ class tgcnCell(RNNCell):
             # print(a.shape)
             print("-----------------------------")
 
-            x = tf.transpose(x, perm=[3, 0, 1, 2])
-            # ?, gcn, features, gru
+            x = tf.transpose(x, perm=[2, 0, 1])
             tmp2 = x
-            x = tf.reshape(x, shape=[-1, input_size])
+            x = tf.reshape(x, shape=[-1, new_input_size])
             # print()
 
             weights = tf.get_variable(
-                'weights', [input_size, output_size], initializer=tf.contrib.layers.xavier_initializer())
+                'weights', [new_input_size, output_size], initializer=tf.contrib.layers.xavier_initializer())
             # (batch_size * self._nodes, output_size)
             x = tf.matmul(x, weights)
             biases = tf.get_variable(
                 "biases", [output_size], initializer=tf.constant_initializer(bias, dtype=tf.float32))
             x = tf.nn.bias_add(x, biases)
-            print("------------- Output size----------------------")
-            print("x: ", x)
-            print("x.shape: ", x.shape)
-            print("x.get_shape(): ", x.get_shape())
-            x = tf.transpose(x, perm=[0, 2, 1, 3])
-            # ?, features, gcn, gru
-            x = tf.reshape(
-                x, shape=[-1, self._features, self._nodes, output_size])
-            x = tf.reshape(
-                x, shape=[-1, self._nodes * output_size])
+            x = tf.reshape(x, shape=[-1, self._nodes, output_size])
+            x = tf.reshape(x, shape=[-1, self._nodes * output_size])
         return x
