@@ -82,6 +82,9 @@ data1 = data1/max_value
 trainX, trainY, testX, testY = process_dow_full_data(
     data1, label, time_len, train_rate, seq_len, pre_len)
 
+print("trainX.shape, trainY.shape, testX.shape, testY.shape")
+print(trainX.shape, trainY.shape, testX.shape, testY.shape)
+
 totalbatch = int(trainX.shape[0]/batch_size)
 training_data_count = len(trainX)
 
@@ -108,6 +111,9 @@ def TGCN(_X, _weights, _biases):
         o = tf.reshape(o, shape=[-1, gru_units])
         m.append(o)
     last_output = m[-1]
+    print("last_output.shape", last_output.shape)
+    last_output = last_output[:, 0]
+    print("last_output.shape", last_output.shape)
     # outputs = gru_units * number of nodes in gcn
     output = tf.matmul(last_output, _weights['out']) + _biases['out']
     # num_nodes * pre_len, 3 in this case
