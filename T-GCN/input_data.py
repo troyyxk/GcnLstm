@@ -24,11 +24,11 @@ def load_los_data(dataset):
     return los_tf, adj
 
 
-# def load_dow_price_data():
-#     dow_adj = pd.read_csv(r'../Data_stock/dow_corr.csv', header=None)
-#     adj = np.mat(dow_adj)
-#     dow_price = pd.read_csv(r'../Data_stock/dow_price.csv').iloc[1001: 7000]
-#     return dow_price, adj
+def load_dow_price_data():
+    dow_adj = pd.read_csv(r'../Data_stock/dow_corr.csv', header=None)
+    adj = np.mat(dow_adj)
+    dow_price = pd.read_csv(r'../Data_stock/dow_price.csv').iloc[1001: 7000]
+    return dow_price, adj
 
 
 def preprocess_data(data, time_len, rate, seq_len, pre_len):
