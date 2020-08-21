@@ -2,11 +2,61 @@
 import tensorflow as tf
 import numpy as np
 import numpy.linalg as la
+from input_data import load_dow_price_data
 
 # Data Dimensions
 input_dim = 1           # input dimension
 seq_max_len = 12         # sequence maximum length
 out_dim = 1             # output dimension
+seq_len = seq_max_len
+pre_len = out_dim
+train_rate = 0.8
+
+# Parameters
+learning_rate = 0.01    # The optimization initial learning rate
+training_steps = 10000  # Total number of training steps
+batch_size = 32         # batch size
+display_freq = 1000     # Frequency of displaying the training results
+
+num_hidden_units = 10   # number of hidden units
+
+
+def preprocess_data(data, time_len, rate, seq_len, pre_len):
+    train_size = int(time_len * rate)
+    train_data = data[0:train_size]
+    test_data = data[train_size:time_len]
+
+    trainX, trainY, testX, testY = [], [], [], []
+    for i in range(len(train_data) - seq_len - pre_len):
+        a = train_data[i: i + seq_len + pre_len]
+        trainX.append(a[0: seq_len])  # seq_len 12
+        trainY.append(a[seq_len: seq_len + pre_len])  # pre_len 1
+    for i in range(len(test_data) - seq_len - pre_len):
+        b = test_data[i: i + seq_len + pre_len]
+        testX.append(b[0: seq_len])
+        testY.append(b[seq_len: seq_len + pre_len])
+
+    trainX1 = np.array(trainX)
+    trainY1 = np.array(trainY)
+    testX1 = np.array(testX)
+    testY1 = np.array(testY)
+    return trainX1, trainY1, testX1, testY1
+
+
+data, adj = load_dow_price_data()
+time_len = data.shape[0]
+num_nodes = data.shape[1]
+data = data[:, 0]
+
+# max_value = np.max(data)
+# data = data/max_value
+print("data.shape: ", data.shape)
+x_train, y_train, x_valid, y_valid = preprocess_data(
+    data, time_len, train_rate, seq_len, pre_len)
+
+totalbatch = int(x_train.shape[0]/batch_size)
+print("totalbatch: ", totalbatch)
+# training_data_count = len(x_train)
 
 
 def evaluation(a, b):
@@ -27,21 +77,13 @@ print("Size of:")
 print("- Training-set size:\t\t{}".format(len(y_train)))
 print("- Test-set size:\t{}".format(len(y_test)))
 
-# Parameters
-learning_rate = 0.01    # The optimization initial learning rate
-training_steps = 10000  # Total number of training steps
-batch_size = 10         # batch size
-display_freq = 1000     # Frequency of displaying the training results
 
-num_hidden_units = 10   # number of hidden units
-
-
-def next_batch(x, y, batch_size):
-    N = x.shape[0]
-    batch_indices = np.random.permutation(N)[:batch_size]
-    x_batch = x[batch_indices]
-    y_batch = y[batch_indices]
-    return x_batch, y_batch
+# def next_batch(x, y, batch_size):
+#     N = x.shape[0]
+#     batch_indices = np.random.permutation(N)[:batch_size]
+#     x_batch = x[batch_indices]
+#     y_batch = y[batch_indices]
+#     return x_batch, y_batch
 
 # weight and bais wrappers
 
@@ -80,8 +122,8 @@ def RNN(x, weights, biases, num_hidden):
     :param biases: vector of fully-connected output layer biases
     :param num_hidden: number of hidden units
     """
-    cell = tf.nn.rnn_cell.BasicRNNCell(num_hidden)
-    outputs, states = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32)
+    cell = tf.nn.rnn_cell.GRUCell(num_hidden)
+    outputs, _ = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32)
     out = tf.matmul(outputs[:, -1, :], weights) + biases
     return out
 
@@ -104,13 +146,13 @@ init = tf.global_variables_initializer()
 
 sess = tf.InteractiveSession()
 sess.run(init)
-for i in range(training_steps):
-    x_batch, y_batch = next_batch(x_train, y_train, batch_size)
+for i in range(totalbatch):
+    m = i
+    x_batch = x_train[m * batch_size: (m+1) * batch_size]
+    y_batch = y_train[m * batch_size: (m+1) * batch_size]
     _, mse = sess.run([train_op, cost], feed_dict={x: x_batch, y: y_batch})
-    if i % display_freq == 0:
+    if i % 10 == 0:
         print('Step {}, MSE={}'.format(i, mse))
-# Test
-y_pred = sess.run(pred_out, feed_dict={x: x_test})
 
 # Test
 y_pred = sess.run(pred_out, feed_dict={x: x_test})
