@@ -40,11 +40,11 @@ def preprocess_data(data, time_len, rate, seq_len, pre_len):
     for i in range(len(train_data) - seq_len - pre_len):
         a = train_data[i: i + seq_len + pre_len]
         trainX.append(a[0: seq_len])
-        trainY.append(a[seq_len: seq_len + pre_len])
+        trainY.append(a[pre_len: seq_len + pre_len])
     for i in range(len(test_data) - seq_len - pre_len):
         b = test_data[i: i + seq_len + pre_len]
         testX.append(b[0: seq_len])
-        testY.append(b[seq_len: seq_len + pre_len])
+        testY.append(b[pre_len: seq_len + pre_len])
 
     trainX1 = np.array(trainX)
     trainY1 = np.array(trainY)

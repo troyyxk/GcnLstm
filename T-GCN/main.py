@@ -8,11 +8,11 @@ import os
 import numpy.linalg as la
 from input_data import *
 from tgcn import tgcnCell
-#from gru import GRUCell
+# from gru import GRUCell
 
 from visualization import plot_result, plot_error
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-#import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import time
 
 time_start = time.time()
@@ -23,7 +23,7 @@ flags.DEFINE_float('learning_rate', 0.001, 'Initial learning rate.')
 flags.DEFINE_integer('training_epoch', 10, 'Number of epochs to train.')
 flags.DEFINE_integer('gru_units', 64, 'hidden units of gru.')
 flags.DEFINE_integer('seq_len', 12, '  time length of inputs.')
-flags.DEFINE_integer('pre_len', 3, 'time length of prediction.')
+flags.DEFINE_integer('pre_len', 1, 'time length of prediction.')
 flags.DEFINE_float('train_rate', 0.8, 'rate of training set.')
 flags.DEFINE_integer('batch_size', 32, 'batch size.')
 flags.DEFINE_string('dataset', 'los', 'sz or los.')
@@ -79,17 +79,19 @@ def TGCN(_X, _weights, _biases):
         o = tf.reshape(i, shape=[-1, num_nodes, gru_units])
         o = tf.reshape(o, shape=[-1, gru_units])
         m.append(o)
-    last_output = m[-1]
-    output = tf.matmul(last_output, _weights['out']) + _biases['out']
-    output = tf.reshape(output, shape=[-1, num_nodes, pre_len])
-    output = tf.transpose(output, perm=[0, 2, 1])
-    output = tf.reshape(output, shape=[-1, num_nodes])
-    return output, m, states
+    processed_outputs = []
+    for output in m:
+        output = tf.matmul(output, _weights['out']) + _biases['out']
+        output = tf.reshape(output, shape=[-1, num_nodes, pre_len])
+        output = tf.transpose(output, perm=[0, 2, 1])
+        output = tf.reshape(output, shape=[-1, num_nodes])
+        processed_outputs.append(output)
+    return output, processed_outputs, states
 
 
 ###### placeholders ######
 inputs = tf.placeholder(tf.float32, shape=[None, seq_len, num_nodes])
-labels = tf.placeholder(tf.float32, shape=[None, pre_len, num_nodes])
+labels = tf.placeholder(tf.float32, shape=[None, seq_len, num_nodes])
 
 # Graph weights
 weights = {
@@ -98,7 +100,7 @@ biases = {
     'out': tf.Variable(tf.random_normal([pre_len]), name='bias_o')}
 
 if model_name == 'tgcn':
-    pred, ttts, ttto = TGCN(inputs, weights, biases)
+    o, pred, ttto = TGCN(inputs, weights, biases)
 
 y_pred = pred
 
@@ -109,7 +111,10 @@ Lreg = lambda_loss * sum(tf.nn.l2_loss(tf_var)
                          for tf_var in tf.trainable_variables())
 label = tf.reshape(labels, [-1, num_nodes])
 # loss
-loss = tf.reduce_mean(tf.nn.l2_loss(y_pred-label) + Lreg)
+tmp_losses = [tf.nn.l2_loss(y_pred[i]-label[i]) for i in range(seq_len)]
+losses = [(tmp_losses[i] + Lreg) for i in range(seq_len)]
+# loss=tf.reduce_mean(tf.nn.l2_loss(y_pred-label) + Lreg)
+loss = tf.reduce_mean(tf.add_n(losses))
 # rmse
 error = tf.sqrt(tf.reduce_mean(tf.square(y_pred-label)))
 optimizer = tf.train.AdamOptimizer(lr).minimize(loss)
@@ -117,13 +122,13 @@ optimizer = tf.train.AdamOptimizer(lr).minimize(loss)
 ###### Initialize session ######
 variables = tf.global_variables()
 saver = tf.train.Saver(tf.global_variables())
-#sess = tf.Session()
+# sess = tf.Session()
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.333)
 sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 sess.run(tf.global_variables_initializer())
 
 out = 'out/%s' % (model_name)
-#out = 'out/%s_%s'%(model_name,'perturbation')
+# out = 'out/%s_%s'%(model_name,'perturbation')
 path1 = '%s_%s_lr%r_batch%r_unit%r_seq%r_pre%r_epoch%r' % (
     model_name, data_name, lr, batch_size, gru_units, seq_len, pre_len, training_epoch)
 path = os.path.join(out, path1)
@@ -153,23 +158,30 @@ for epoch in range(training_epoch):
         print("m/totalbatch: ", m, "/", totalbatch)
         mini_batch = trainX[m * batch_size: (m+1) * batch_size]
         mini_label = trainY[m * batch_size: (m+1) * batch_size]
-        _, loss1, rmse1, train_output = sess.run([optimizer, loss, error, y_pred],
-                                                 feed_dict={inputs: mini_batch, labels: mini_label})
+
+        _, loss1, train_output = sess.run([optimizer, loss, y_pred],
+                                          feed_dict={inputs: mini_batch, labels: mini_label})
         # print("mini_batch.shape: ", mini_batch.shape)
         # print("mini_label.shape: ", mini_label.shape)
         # print("train_output.shape: ", train_output.shape)
         batch_loss.append(loss1)
-        batch_rmse.append(rmse1 * max_value)
+        # batch_rmse.append(rmse1 * max_value)
 
     print("-1-")
     # Test completely at every epoch
-    loss2, rmse2, test_output = sess.run([loss, error, y_pred],
-                                         feed_dict={inputs: testX, labels: testY})
+    loss2, test_output = sess.run([loss, y_pred],
+                                  feed_dict={inputs: testX, labels: testY})
     print("-2-")
-    test_label = np.reshape(testY, [-1, num_nodes])
-    rmse, mae, acc, r2_score, var_score = evaluation(test_label, test_output)
+    print(testY.shape)
+    y = testY[:, -1, :]
+    print(y.shape)
+    print(len(test_output))
+    print(test_output[0].shape)
+    test_label = np.reshape(y, [-1, num_nodes])
+    rmse, mae, acc, r2_score, var_score = evaluation(
+        test_label, test_output[-1])
     test_label1 = test_label * max_value
-    test_output1 = test_output * max_value
+    test_output1 = test_output[-1] * max_value
     test_loss.append(loss2)
     test_rmse.append(rmse * max_value)
     test_mae.append(mae * max_value)
@@ -181,7 +193,7 @@ for epoch in range(training_epoch):
     print("-3-")
 
     print('Iter:{}'.format(epoch),
-          'train_rmse:{:.4}'.format(batch_rmse[-1]),
+          #   'train_rmse:{:.4}'.format(batch_rmse[-1]),
           'test_loss:{:.4}'.format(loss2),
           'test_rmse:{:.4}'.format(rmse),
           'test_acc:{:.4}'.format(acc))
