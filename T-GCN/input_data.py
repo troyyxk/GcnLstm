@@ -27,7 +27,8 @@ def load_los_data(dataset):
 def load_dow_price_data():
     dow_adj = pd.read_csv(r'../Data_stock/dow_corr.csv', header=None)
     adj = np.mat(dow_adj)
-    dow_price = pd.read_csv(r'../Data_stock/dow_price.csv').iloc[1001: 7000]
+    dow_price = pd.read_csv(
+        r'../Data_stock/dow_price.csv').iloc[1001: 7000].values
     return dow_price, adj
 
 
@@ -39,8 +40,8 @@ def preprocess_data(data, time_len, rate, seq_len, pre_len):
     trainX, trainY, testX, testY = [], [], [], []
     for i in range(len(train_data) - seq_len - pre_len):
         a = train_data[i: i + seq_len + pre_len]
-        trainX.append(a[0: seq_len])
-        trainY.append(a[pre_len: seq_len + pre_len])
+        trainX.append(a[0: seq_len])  # seq_len 12
+        trainY.append(a[pre_len: seq_len + pre_len])  # pre_len 1
     for i in range(len(test_data) - seq_len - pre_len):
         b = test_data[i: i + seq_len + pre_len]
         testX.append(b[0: seq_len])
